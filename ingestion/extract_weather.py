@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from ingestion.config import settings
@@ -72,7 +72,7 @@ def to_records(payload: dict, captured_at: str, now_epoch: int):
 
 
 def run() -> dict:
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     captured_at = now_utc.isoformat()
 
     payload = json.loads(http_get(settings.weather_api_url, params=request_params()))

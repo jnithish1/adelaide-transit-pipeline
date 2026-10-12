@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,7 +55,7 @@ def main() -> None:
     errors = summary.pop("dbt_errors")
     if args.status == "auto":
         args.status = "failed" if (errors or summary["dbt_tests_failed"]) else "success"
-    finished = datetime.now(timezone.utc)
+    finished = datetime.now(UTC)
     started = datetime.fromisoformat(args.started_at) if args.started_at else finished
     duration = int((finished - started).total_seconds())
     row = {"run_id": args.run_id, "orchestrator": args.orchestrator, "started_at": started.isoformat(),

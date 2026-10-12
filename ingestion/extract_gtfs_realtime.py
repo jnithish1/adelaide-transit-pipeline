@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from google.transit import gtfs_realtime_pb2
@@ -78,7 +78,7 @@ def flatten(feed: gtfs_realtime_pb2.FeedMessage, captured_at: str):
 
 
 def run() -> dict:
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     captured_at = now_utc.isoformat()
     local_date = now_utc.astimezone(ADELAIDE).date()
 

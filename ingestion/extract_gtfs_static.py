@@ -15,7 +15,7 @@ import json
 import logging
 import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from ingestion.config import settings
@@ -41,7 +41,7 @@ def csv_to_records(raw: bytes, feed_version: str, extracted_at: str):
 
 
 def run(force: bool = False) -> dict:
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     today_local = now_utc.astimezone(ADELAIDE).date()
     extracted_at = now_utc.isoformat()
 

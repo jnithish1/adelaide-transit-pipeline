@@ -18,7 +18,7 @@ import logging
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 log = logging.getLogger("load_snowflake")
 
@@ -87,7 +87,7 @@ def run(dry_run: bool = False) -> dict:
     try:
         cur = conn.cursor()
         for table, path in LOADS:
-            started = datetime.now(timezone.utc)
+            started = datetime.now(UTC)
             cur.execute(copy_sql(table, path))
             results = cur.fetchall()
             # COPY returns one row per file: (file, status, rows_parsed, rows_loaded, ...).

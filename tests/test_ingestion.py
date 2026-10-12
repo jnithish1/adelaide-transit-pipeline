@@ -8,7 +8,7 @@ import gzip
 import io
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -119,7 +119,7 @@ def test_gtfs_rt_flattens_one_row_per_stop_update(local_lake, monkeypatch):
 def test_weather_keeps_past_hours_only(local_lake, monkeypatch):
     import ingestion.extract_weather as w
 
-    now = int(datetime.now(timezone.utc).timestamp())
+    now = int(datetime.now(UTC).timestamp())
     past, future = now - 7200, now + 7200
     payload = {
         "latitude": -34.93, "longitude": 138.6,
