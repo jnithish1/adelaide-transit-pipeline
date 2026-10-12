@@ -52,7 +52,7 @@ jobs:
       - name: Extract -> S3
         run: |
           python -m ingestion.extract_gtfs_static
-          python -m ingestion.extract_bom
+          python -m ingestion.extract_weather
 
       - name: Load S3 -> Snowflake RAW
         run: python -m ingestion.load_snowflake

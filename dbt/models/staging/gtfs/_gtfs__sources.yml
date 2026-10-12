@@ -38,6 +38,6 @@ sources:
         columns:
           - name: _source_file
             data_tests: [not_null]
-      - name: bom_observations
-        identifier: BOM_OBSERVATIONS
-        description: BOM half-hourly observations, rolling 72h window per file.
+      - name: weather_hourly
+        identifier: WEATHER_HOURLY
+        description: Open-Meteo hourly weather for Adelaide, rolling 3-day window per file.

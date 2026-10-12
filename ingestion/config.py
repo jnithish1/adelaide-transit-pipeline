@@ -46,16 +46,18 @@ class Settings:
         )
     )
 
-    # --- Bureau of Meteorology ---------------------------------------------
-    # 72-hour rolling observations JSON. Default: Adelaide (West Terrace).
-    # Station list: http://www.bom.gov.au/sa/observations/saall.shtml
-    bom_observations_url: str = field(
-        default_factory=lambda: _env(
-            "BOM_OBSERVATIONS_URL",
-            "https://www.bom.gov.au/fwo/IDS60901/IDS60901.94648.json",
-        )
+    # --- Weather (Open-Meteo) -----------------------------------------------
+    # Free, documented API, no key needed for non-commercial use.
+    # (BOM's website prohibits automated downloads, so it isn't used.)
+    weather_api_url: str = field(
+        default_factory=lambda: _env("WEATHER_API_URL", "https://api.open-meteo.com/v1/forecast")
     )
-    # BOM rejects requests without a descriptive User-Agent.
+    weather_location_id: str = field(default_factory=lambda: _env("WEATHER_LOCATION_ID", "adelaide_cbd"))
+    weather_location_name: str = field(default_factory=lambda: _env("WEATHER_LOCATION_NAME", "Adelaide CBD"))
+    weather_lat: float = float(_env("WEATHER_LAT", "-34.9285"))
+    weather_lon: float = float(_env("WEATHER_LON", "138.6007"))
+    weather_past_days: int = int(_env("WEATHER_PAST_DAYS", "3"))
+
     http_user_agent: str = field(
         default_factory=lambda: _env(
             "HTTP_USER_AGENT",

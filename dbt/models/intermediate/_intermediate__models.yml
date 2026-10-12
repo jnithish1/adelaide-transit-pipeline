@@ -20,12 +20,14 @@ models:
           - accepted_values:
               values: [realtime_stop_update, cancelled_trip_expanded]
 
-  - name: int_bom__observations_deduped
-    description: One row per station per half-hour, with per-interval rainfall derived.
+  - name: int_weather__hourly_deduped
+    description: >
+      One row per location per UTC hour. Each file repeats the last 3 days, so
+      the most recently loaded value wins (recent hours get revised upstream).
     columns:
-      - name: observation_id
+      - name: weather_observation_id
         data_tests: [unique, not_null]
-      - name: rain_interval_mm
+      - name: precipitation_mm
         data_tests:
           - dbt_utils.accepted_range:
               min_value: 0

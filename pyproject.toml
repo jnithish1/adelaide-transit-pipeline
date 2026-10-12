@@ -1,7 +1,7 @@
 [project]
 name = "adelaide-transit-pipeline"
 version = "1.0.0"
-description = "Adelaide Metro GTFS + BOM weather -> S3 -> Snowflake -> dbt star schema, orchestrated with Airflow"
+description = "Adelaide Metro GTFS + Open-Meteo weather -> S3 -> Snowflake -> dbt star schema, orchestrated with Airflow"
 requires-python = ">=3.11"
 
 [tool.ruff]

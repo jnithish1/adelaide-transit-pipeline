@@ -19,12 +19,12 @@ lint: ## Ruff
 extract-local: ## Run all extractors writing to ./data_lake (no AWS)
 	S3_BUCKET= python -m ingestion.extract_gtfs_static
 	S3_BUCKET= python -m ingestion.extract_gtfs_realtime
-	S3_BUCKET= python -m ingestion.extract_bom
+	S3_BUCKET= python -m ingestion.extract_weather
 
 extract: ## Run all extractors writing to S3
 	python -m ingestion.extract_gtfs_static
 	python -m ingestion.extract_gtfs_realtime
-	python -m ingestion.extract_bom
+	python -m ingestion.extract_weather
 
 load: ## COPY new S3 files into Snowflake RAW
 	python -m ingestion.load_snowflake

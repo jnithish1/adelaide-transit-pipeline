@@ -32,7 +32,7 @@ LOADS: list[tuple[str, str]] = [
     ("RAW.GTFS_CALENDAR", "gtfs_static/calendar/"),
     ("RAW.GTFS_CALENDAR_DATES", "gtfs_static/calendar_dates/"),
     ("RAW.GTFS_RT_TRIP_UPDATES", "gtfs_rt/trip_updates/"),
-    ("RAW.BOM_OBSERVATIONS", "bom/observations/"),
+    ("RAW.WEATHER_HOURLY", "weather/hourly/"),
 ]
 
 

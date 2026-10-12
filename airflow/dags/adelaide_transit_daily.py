@@ -5,7 +5,7 @@ Runs at 03:00 Adelaide time, after the previous service day has finished
 
     extract_gtfs_static ─┐
                          ├─> load_snowflake ─> dbt_deps ─> dbt_seed ─> dbt_snapshot ─> dbt_build ─> record_run
-    extract_bom ─────────┘
+    extract_weather ─────┘
 
 dbt_build runs models and their tests together, in DAG order, so a failing
 test on a staging model stops the marts built on top of it.
@@ -60,8 +60,8 @@ def adelaide_transit_daily():
         return run()
 
     @task(execution_timeout=timedelta(minutes=5))
-    def extract_bom() -> dict:
-        from ingestion.extract_bom import run
+    def extract_weather() -> dict:
+        from ingestion.extract_weather import run
         return run()
 
     @task(execution_timeout=timedelta(minutes=20))
@@ -105,7 +105,7 @@ def adelaide_transit_daily():
 
     started = run_started()
     loaded = load_snowflake(run_id="{{ run_id }}")
-    started >> [extract_gtfs_static(), extract_bom()] >> loaded
+    started >> [extract_gtfs_static(), extract_weather()] >> loaded
     loaded >> dbt_deps >> dbt_seed >> dbt_snapshot >> dbt_source_freshness >> dbt_build >> record_run
 
 

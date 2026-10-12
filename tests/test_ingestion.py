@@ -8,6 +8,7 @@ import gzip
 import io
 import json
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,7 @@ def local_lake(tmp_path, monkeypatch):
     s = cfg.Settings(s3_bucket=None, local_lake_dir=str(tmp_path))
     monkeypatch.setattr(cfg, "settings", s)
     monkeypatch.setattr(lake, "settings", s)
-    for mod in ("extract_gtfs_static", "extract_gtfs_realtime", "extract_bom"):
+    for mod in ("extract_gtfs_static", "extract_gtfs_realtime", "extract_weather"):
         m = __import__(f"ingestion.{mod}", fromlist=["settings"])
         monkeypatch.setattr(m, "settings", s)
     import ingestion.extract_gtfs_static as st
@@ -113,28 +114,33 @@ def test_gtfs_rt_flattens_one_row_per_stop_update(local_lake, monkeypatch):
     assert cancelled["stop_sequence"] is None
 
 
-# --- BOM -----------------------------------------------------------------------
+# --- Weather (Open-Meteo) --------------------------------------------------------
 
-BOM_SAMPLE = {
-    "observations": {
-        "header": [{"name": "Adelaide (West Terrace /  ngayirdapira)", "state": "South Australia"}],
-        "data": [
-            {"wmo": 94648, "local_date_time_full": "20261012120000", "air_temp": 21.4, "rain_trace": "0.2"},
-            {"wmo": 94648, "local_date_time_full": "20261012113000", "air_temp": 20.9, "rain_trace": "0.0"},
-        ],
+def test_weather_keeps_past_hours_only(local_lake, monkeypatch):
+    import ingestion.extract_weather as w
+
+    now = int(datetime.now(timezone.utc).timestamp())
+    past, future = now - 7200, now + 7200
+    payload = {
+        "latitude": -34.93, "longitude": 138.6,
+        "hourly": {"time": [past, past + 3600, future],
+                   "temperature_2m": [21.4, 20.9, 30.0],
+                   "precipitation": [0.2, 0.0, 5.0]},
     }
-}
-
-
-def test_bom_records_carry_station_header(local_lake, monkeypatch):
-    import ingestion.extract_bom as bom
-
-    monkeypatch.setattr(bom, "http_get", lambda url, **kw: json.dumps(BOM_SAMPLE).encode())
-    result = bom.run()
-    assert result["rows"] == 2 and result["station"] == "IDS60901.94648"
+    monkeypatch.setattr(w, "http_get", lambda url, **kw: json.dumps(payload).encode())
+    result = w.run()
+    assert result["rows"] == 2                     # forecast hour dropped
     rows = read_ndjson_gz(Path(result["uri"]))
-    assert rows[0]["_station_name"].startswith("Adelaide")
-    assert rows[0]["rain_trace"] == "0.2"
+    assert rows[0]["time_epoch_utc"] == past and rows[0]["precipitation"] == 0.2
+    assert rows[0]["rain"] is None                 # variable missing from payload -> null, not a crash
+    assert rows[0]["location_id"] == "adelaide_cbd"
+
+
+def test_weather_requests_utc_epoch_times():
+    from ingestion.extract_weather import request_params
+
+    p = request_params()
+    assert p["timezone"] == "GMT" and p["timeformat"] == "unixtime"
 
 
 def test_copy_sql_is_idempotent_style():

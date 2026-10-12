@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: stg_weather__hourly
+    description: >
+      Open-Meteo hourly weather for Adelaide, typed and shifted to hour-start.
+      Contains duplicates: each landed file overlaps the previous two days.
+    columns:
+      - name: station_id
+        description: Location identifier from config (default adelaide_cbd).
+        data_tests: [not_null]
+      - name: hour_start_utc
+        data_tests:
+          - not_null
+          - not_in_future:
+              grace_hours: 24   # UTC vs local; the extractor already drops forecast hours
+      - name: air_temp_c
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: -10
+              max_value: 55
+              config:
+                severity: warn
+      - name: precipitation_mm
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              config:
+                severity: warn
+      - name: relative_humidity_pct
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100

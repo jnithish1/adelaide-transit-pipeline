@@ -14,7 +14,7 @@ clean-targets: ["target", "dbt_packages"]
 
 vars:
   # Incremental models reprocess this many days back on each run, to pick up
-  # late-arriving realtime snapshots and BOM corrections.
+  # late-arriving realtime snapshots and revised weather values.
   lookback_days: 3
   # On-time window, in seconds relative to the timetable. Adelaide Metro's
   # official definition isn't published in the feed, so this follows the

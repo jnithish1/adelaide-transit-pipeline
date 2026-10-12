@@ -40,5 +40,5 @@ LIST @LAKE_STAGE;
 
 -- Peek at a few records without loading anything:
 SELECT $1, METADATA$FILENAME
-FROM @LAKE_STAGE/bom/observations/ (FILE_FORMAT => 'NDJSON_GZ')
+FROM @LAKE_STAGE/weather/hourly/ (FILE_FORMAT => 'NDJSON_GZ')
 LIMIT 5;

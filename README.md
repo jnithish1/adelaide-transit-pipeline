@@ -3,7 +3,7 @@
 **How punctual are Adelaide's buses, trains and trams, and does the weather make a difference?**
 
 An end-to-end cloud data pipeline built on live public data. Adelaide Metro's
-realtime feed and the Bureau of Meteorology's observations land in AWS S3, load
+realtime feed and hourly weather from Open-Meteo land in AWS S3, load
 into Snowflake, and dbt models them into a Kimball star schema with data
 quality tests. Airflow runs it daily; a GitHub Actions version does the same
 without a server.
@@ -13,7 +13,7 @@ flowchart LR
     subgraph Sources
         A[Adelaide Metro<br/>GTFS timetable<br/>daily]
         B[Adelaide Metro<br/>GTFS-Realtime<br/>every 15 min]
-        C[BOM observations<br/>Adelaide, daily]
+        C[Open-Meteo hourly weather<br/>Adelaide, daily]
     end
     subgraph AWS
         S3[(S3 landing zone<br/>raw/source/table/dt=)]
@@ -86,11 +86,13 @@ band and temperature band).
   it has already loaded, so any step can be re-run safely.
 - **The timetable only lands when it changes.** The GTFS zip is hashed; an
   unchanged feed is skipped instead of reloading ~1.5M identical rows a day.
-- **Overlapping weather files on purpose.** BOM publishes a rolling 72 hours.
+- **Overlapping weather files on purpose.** Each daily pull asks for the last 3 days.
   Daily runs overlap by ~48h, so one failed run loses nothing; dbt dedupes.
-- **BOM's "rain since 9am" is cumulative**, so the intermediate model diffs
-  consecutive readings within each 9am-to-9am rain day. A singular test checks
-  the derived intervals add back up to BOM's own daily total.
+- **Weather is pulled in UTC, modelled in Adelaide time.** Local timestamps
+  repeat an hour when daylight saving ends, so dedupe happens on UTC and the
+  fact groups by local hour. Forecast hours are dropped at extraction.
+- **Why not BOM directly?** The Bureau's website prohibits automated
+  downloads and blocks them, so the pipeline uses a documented API instead.
 - **GTFS times can exceed 24:00** (a trip at "25:10" is 1:10am but belongs to
   the previous service day), so they're stored as seconds from service-day start.
 - **Cancelled trips don't disappear.** Feeds often send a cancellation with no
@@ -108,15 +110,15 @@ About 100 dbt tests (exact count printed by CI):
   coordinates, delays, temperatures and rainfall (warn-only where outliers are real)
 - custom generic test `not_in_future`, which catches UTC-vs-Adelaide-time bugs
 - singular tests: SCD2 windows never overlap, the fact has exactly one row per
-  stop event (no fan-out from the type 2 joins), derived rain reconciles to
-  BOM's totals, and yesterday has enough realtime snapshots
+  stop event (no fan-out from the type 2 joins), and yesterday has enough
+  realtime snapshots
 - source freshness on the realtime and weather tables
 - failing rows are stored in a `TEST_FAILURES` schema for debugging
 
 ## Repository layout
 
 ```
-ingestion/          Python extractors (GTFS static, GTFS-RT, BOM) and Snowflake loader
+ingestion/          Python extractors (GTFS static, GTFS-RT, weather) and Snowflake loader
 snowflake/          One-off setup SQL: warehouse, roles, RAW tables, S3 integration
 infra/aws/          IAM policies and AWS CLI steps for the bucket and roles
 dbt/                Staging -> intermediate -> marts, snapshots, seeds, tests, macros
@@ -213,8 +215,9 @@ or keep running on a pay-as-you-go account with the cap in place.
   convention. It's a dbt variable (`on_time_*_seconds`) so it's easy to change.
 - **Peak bands** in `dim_time` are an analysis choice, not an Adelaide Metro
   definition.
-- **Weather** comes from one station (Adelaide, West Terrace). Swap the URL in
-  `.env` for another BOM station.
+- **Weather** is for one point (Adelaide CBD) and is model-based hourly data,
+  not a single weather station's readings. Change `WEATHER_LAT`/`WEATHER_LON`
+  in `.env` for another location.
 - **Public holidays** are seeded from SafeWork SA for 2025-2027; extend yearly.
 - Adelaide Metro feed URLs can change; they're overridable in `.env`.
 
@@ -222,5 +225,5 @@ or keep running on a pay-as-you-go account with the cap in place.
 
 - Transit data: **Adelaide Metro – Department for Infrastructure and Transport,
   South Australia**, Creative Commons Attribution.
-- Weather data: © Commonwealth of Australia, Bureau of Meteorology. Check BOM's
-  copyright notice before republishing the raw data.
+- Weather data: [Open-Meteo](https://open-meteo.com), free for non-commercial use; attribution
+  required (CC BY 4.0).
