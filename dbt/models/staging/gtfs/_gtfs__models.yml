@@ -1,0 +1,129 @@
+version: 2
+
+models:
+  - name: stg_gtfs__routes
+    description: Current version of every Adelaide Metro route.
+    columns:
+      - name: route_id
+        description: Natural key from the GTFS feed.
+        data_tests: [unique, not_null]
+      - name: route_type
+        description: GTFS route_type (0 tram, 2 train, 3 bus).
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1, 2, 3, 4, 5, 6, 7, 11, 12]
+              quote: false
+
+  - name: stg_gtfs__stops
+    description: Current version of every stop, platform and station.
+    columns:
+      - name: stop_id
+        data_tests: [unique, not_null]
+      - name: stop_name
+        data_tests: [not_null]
+      - name: stop_lat
+        description: Latitude. Adelaide Metro's network sits roughly between -35.6 and -34.3.
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: -36
+              max_value: -34
+              config:
+                severity: warn
+      - name: stop_lon
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 138
+              max_value: 139.5
+              config:
+                severity: warn
+
+  - name: stg_gtfs__trips
+    columns:
+      - name: trip_id
+        data_tests: [unique, not_null]
+      - name: route_id
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('stg_gtfs__routes')
+              config:
+                severity: warn   # older timetable versions can reference retired ids
+              field: route_id
+      - name: direction_id
+        data_tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+  - name: stg_gtfs__stop_times
+    description: Scheduled stop visits. Times are seconds from the start of the service day and may exceed 86,400.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [trip_id, stop_sequence]
+    columns:
+      - name: trip_id
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('stg_gtfs__trips')
+              config:
+                severity: warn   # older timetable versions can reference retired ids
+              field: trip_id
+      - name: stop_id
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('stg_gtfs__stops')
+              config:
+                severity: warn   # older timetable versions can reference retired ids
+              field: stop_id
+      - name: arrival_seconds
+        description: Seconds after midnight of the service day (can run past 24h).
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 172800   # 48h - anything later is a parsing error
+
+  - name: stg_gtfs__calendar
+    columns:
+      - name: service_id
+        data_tests: [unique, not_null]
+      - name: end_date
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= start_date"
+
+  - name: stg_gtfs__calendar_dates
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [service_id, exception_date]
+    columns:
+      - name: exception_type
+        data_tests:
+          - accepted_values:
+              values: [1, 2]
+              quote: false
+
+  - name: stg_gtfs_rt__trip_updates
+    description: Flattened GTFS-Realtime trip updates, one row per stop update per snapshot.
+    columns:
+      - name: trip_update_id
+        description: Surrogate key from source file + row number, so reloads can't create duplicates silently.
+        data_tests: [unique, not_null]
+      - name: observed_at_local
+        data_tests:
+          - not_null
+          - not_in_future:
+              grace_hours: 1
+      - name: trip_schedule_relationship
+        data_tests:
+          - accepted_values:
+              values: [SCHEDULED, ADDED, UNSCHEDULED, CANCELED, REPLACEMENT, DUPLICATED, DELETED, NEW]
+      - name: stop_schedule_relationship
+        data_tests:
+          - accepted_values:
+              values: [SCHEDULED, SKIPPED, NO_DATA, UNSCHEDULED]
+      - name: service_date
+        data_tests: [not_null]

@@ -1,0 +1,156 @@
+version: 2
+
+models:
+  # ---------------------------------------------------------------- dimensions
+  - name: dim_date
+    description: One row per calendar day, 2025-2027, with SA public holidays and AU financial year.
+    columns:
+      - name: date_key
+        description: Smart key YYYYMMDD.
+        data_tests: [unique, not_null]
+      - name: date_day
+        data_tests: [unique, not_null]
+      - name: service_day_type
+        data_tests:
+          - accepted_values:
+              values: ['Weekday', 'Saturday', 'Sunday / Public holiday']
+
+  - name: dim_time
+    description: One row per minute of the day, plus an unknown member (-1).
+    columns:
+      - name: time_key
+        description: HHMM, e.g. 1745. -1 = unknown.
+        data_tests: [unique, not_null]
+      - name: day_period
+        data_tests:
+          - accepted_values:
+              values: ['AM peak', 'Interpeak', 'PM peak', 'Evening', 'Night', 'Unknown']
+
+  - name: dim_route
+    description: Type 2 SCD of Adelaide Metro routes. Join on route_id and valid_from/valid_to.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [route_id, valid_from]
+    columns:
+      - name: route_key
+        data_tests: [unique, not_null]
+      - name: route_mode
+        data_tests:
+          - accepted_values:
+              values: ['Tram', 'Metro', 'Train', 'Bus', 'Ferry', 'Other', 'Unknown']
+
+  - name: dim_stop
+    description: Type 2 SCD of stops and stations.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [stop_id, valid_from]
+    columns:
+      - name: stop_key
+        data_tests: [unique, not_null]
+
+  - name: dim_trip
+    description: Type 1 trip dimension with the trip's service pattern.
+    columns:
+      - name: trip_key
+        data_tests: [unique, not_null]
+      - name: trip_id
+        data_tests: [unique, not_null]
+
+  - name: dim_weather_station
+    columns:
+      - name: station_key
+        data_tests: [unique, not_null]
+      - name: station_id
+        data_tests: [unique, not_null]
+
+  # --------------------------------------------------------------------- facts
+  - name: fct_stop_arrival
+    description: >
+      One row per realtime-observed stop visit. Delay is the last delay
+      estimate before the vehicle left the feed (see int_gtfs_rt__stop_events).
+    columns:
+      - name: stop_event_key
+        data_tests: [unique, not_null]
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: scheduled_time_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_time')
+              field: time_key
+      - name: route_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_route')
+              field: route_key
+      - name: stop_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_stop')
+              field: stop_key
+      - name: trip_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_trip')
+              field: trip_key
+      - name: delay_seconds
+        description: Positive = late, negative = early.
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: -3600
+              max_value: 7200
+              config:
+                severity: warn   # outliers are real sometimes; flag, don't fail
+      - name: punctuality_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['On time', 'Late', 'Early', 'Cancelled', 'Skipped', 'No data']
+      - name: delay_source
+        data_tests:
+          - accepted_values:
+              values: [feed_arrival_delay, computed_arrival, feed_departure_delay, computed_departure, none]
+      - name: last_observed_at_local
+        data_tests:
+          - not_in_future:
+              grace_hours: 1
+
+  - name: fct_weather_hourly
+    description: Weather per station per clock hour.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [station_key, hour_start_local]
+    columns:
+      - name: weather_hour_key
+        data_tests: [unique, not_null]
+      - name: date_key
+        data_tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: time_key
+        data_tests:
+          - relationships:
+              to: ref('dim_time')
+              field: time_key
+      - name: station_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_weather_station')
+              field: station_key
+      - name: rain_mm
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              config:
+                severity: warn

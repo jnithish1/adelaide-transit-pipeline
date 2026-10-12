@@ -1,0 +1,4 @@
+# dbt lives in its own environment in Airflow (see airflow/Dockerfile).
+# Locally you can install both files into one venv.
+dbt-core>=1.9,<2
+dbt-snowflake>=1.9,<2

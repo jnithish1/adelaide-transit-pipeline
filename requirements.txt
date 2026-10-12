@@ -1,0 +1,11 @@
+# Ingestion + loading (also installed into the Airflow image)
+requests>=2.32
+boto3>=1.34
+gtfs-realtime-bindings>=1.0.0
+python-dotenv>=1.0
+snowflake-connector-python>=3.12
+cryptography>=42
+
+# Dev
+pytest>=8
+ruff>=0.6

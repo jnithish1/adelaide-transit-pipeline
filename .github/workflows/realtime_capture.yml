@@ -1,0 +1,43 @@
+# Captures a GTFS-Realtime snapshot to S3 every 15 minutes.
+#
+# Cost note: ~2,900 runs a month at ~30s each. Free and unlimited on a PUBLIC
+# repo; on a private repo it would use most of the 2,000 free minutes (each run
+# is billed as at least a minute). Make the repo public, or run the capture as
+# a Lambda instead (infra/aws/README.md, step 5) and disable this workflow.
+#
+# GitHub may delay or skip scheduled runs when it's busy. The dbt test
+# assert_realtime_captured_yesterday warns if too many snapshots were missed.
+name: Realtime capture
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: realtime-capture
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      AWS_REGION: ap-southeast-2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install requests boto3 gtfs-realtime-bindings python-dotenv
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - run: python -m ingestion.extract_gtfs_realtime

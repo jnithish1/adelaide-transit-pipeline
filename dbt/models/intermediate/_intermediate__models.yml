@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: int_gtfs_rt__stop_events
+    description: >
+      One row per realtime-observed stop visit (last observation wins), plus
+      cancelled trips expanded to their scheduled stops.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [service_date, trip_id, stop_sequence]
+    columns:
+      - name: stop_event_id
+        data_tests: [unique, not_null]
+      - name: observation_count
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: event_source
+        data_tests:
+          - accepted_values:
+              values: [realtime_stop_update, cancelled_trip_expanded]
+
+  - name: int_bom__observations_deduped
+    description: One row per station per half-hour, with per-interval rainfall derived.
+    columns:
+      - name: observation_id
+        data_tests: [unique, not_null]
+      - name: rain_interval_mm
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0

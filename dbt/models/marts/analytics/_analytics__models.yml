@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: mart_route_punctuality_daily
+    description: On-time performance per route per service day.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [service_date, route_key]
+    columns:
+      - name: on_time_pct
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+
+  - name: mart_delay_by_weather
+    description: Delay and on-time rate by mode, time of day, rain and temperature band.
+    columns:
+      - name: stop_events
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 100

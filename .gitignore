@@ -1,0 +1,27 @@
+# secrets
+.env
+*.p8
+*.pem
+snowflake_key*
+
+# local data
+data_lake/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+
+# airflow
+airflow/logs/
+airflow/*.db
+
+.DS_Store

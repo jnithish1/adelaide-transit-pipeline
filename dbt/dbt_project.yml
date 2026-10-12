@@ -1,0 +1,62 @@
+name: adelaide_transit
+version: "1.0.0"
+config-version: 2
+profile: adelaide_transit
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Incremental models reprocess this many days back on each run, to pick up
+  # late-arriving realtime snapshots and BOM corrections.
+  lookback_days: 3
+  # On-time window, in seconds relative to the timetable. Adelaide Metro's
+  # official definition isn't published in the feed, so this follows the
+  # common Australian convention (up to 59s early, up to 4m59s late).
+  # Change it here and every model and test follows.
+  on_time_early_seconds: -59
+  on_time_late_seconds: 299
+  # Date dimension range
+  date_spine_start: "2025-01-01"
+  date_spine_end: "2028-01-01"
+
+models:
+  adelaide_transit:
+    +persist_docs:
+      relation: true
+      columns: true
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view   # views, not ephemeral, so they can be tested
+    marts:
+      +schema: marts
+      +materialized: table
+      analytics:
+        +materialized: view
+
+snapshots:
+  adelaide_transit:
+    +schema: snapshots
+
+seeds:
+  adelaide_transit:
+    +schema: seeds
+    sa_public_holidays:
+      +column_types:
+        holiday_date: date
+        holiday_name: varchar
+        is_part_day: boolean
+
+data_tests:
+  adelaide_transit:
+    +store_failures: true   # failing rows land in a table you can query
+    +schema: test_failures

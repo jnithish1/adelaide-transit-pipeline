@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Lint + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: ruff check .
+      - run: pytest -q
+
+  dbt-parse:
+    name: dbt parse (no warehouse needed)
+    runs-on: ubuntu-latest
+    env:
+      # dbt parse renders the profile but never connects, so dummies are fine.
+      SNOWFLAKE_ACCOUNT: dummy
+      SNOWFLAKE_USER: dummy
+      SNOWFLAKE_PRIVATE_KEY_PATH: /dev/null
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dbt.txt
+      - working-directory: dbt
+        run: |
+          dbt deps --profiles-dir .
+          dbt parse --profiles-dir .
+          dbt ls --profiles-dir . --resource-type test | wc -l | xargs echo "dbt tests defined:"
+
+  dbt-build-ci:
+    name: dbt build against Snowflake (zero-row --empty run)
+    needs: [python, dbt-parse]
+    # Only when secrets are available (not on PRs from forks).
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      DBT_TARGET: ci
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY_PATH: ${{ github.workspace }}/snowflake_key.p8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dbt.txt
+      - name: Write Snowflake key
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > snowflake_key.p8
+          chmod 600 snowflake_key.p8
+      - name: Build every model and test with zero rows
+        # --empty compiles and runs all SQL against real Snowflake but reads
+        # no data, so it catches SQL/column errors for a few cents.
+        working-directory: dbt
+        run: |
+          dbt deps --profiles-dir .
+          dbt build --profiles-dir . --empty
+      - name: Drop the CI schemas
+        if: always()
+        working-directory: dbt
+        run: |
+          dbt run-operation drop_ci_schemas --profiles-dir . --args "{pr: '${PR_NUMBER}'}" || true

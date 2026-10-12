@@ -1,0 +1,33 @@
+# Single-container Airflow for local use: `airflow standalone` runs the
+# scheduler, API server/UI and a SQLite metadata DB together. Fine for one
+# person and two DAGs; use the official multi-container compose (Postgres +
+# CeleryExecutor) or a managed service (MWAA, Astronomer) for anything shared.
+#
+#   cd airflow
+#   docker compose up --build
+#   open http://localhost:8080   (login printed in the logs on first start)
+services:
+  airflow:
+    build:
+      context: ..
+      dockerfile: airflow/Dockerfile
+    command: standalone
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../.env
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: "Australia/Adelaide"
+      PIPELINE_PROJECT_DIR: /opt/airflow/project
+      PYTHONPATH: /opt/airflow/project
+      SNOWFLAKE_PRIVATE_KEY_PATH: /opt/airflow/secrets/snowflake_key.p8
+      # keep Airflow's metadata DB on a volume so DAG history survives restarts
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/state/airflow.db
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ..:/opt/airflow/project
+      - ${SNOWFLAKE_KEY_DIR:-~/.snowflake}:/opt/airflow/secrets:ro
+      - airflow-state:/opt/airflow/state
+volumes:
+  airflow-state:

@@ -1,0 +1,12 @@
+version: 2
+
+seeds:
+  - name: sa_public_holidays
+    description: >
+      South Australian public holidays 2025-2027 from SafeWork SA
+      (safework.sa.gov.au/resources/public-holidays). Part-day holidays
+      (Christmas Eve / New Year's Eve, 7pm-midnight) are flagged and not
+      treated as full holidays in dim_date. Extend each year.
+    columns:
+      - name: holiday_date
+        data_tests: [unique, not_null]

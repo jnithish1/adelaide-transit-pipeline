@@ -1,0 +1,43 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'TRANSIT') }}"
+    schema: RAW
+    description: >
+      Landed files from S3, loaded by ingestion/load_snowflake.py. Every table has
+      the same shape: `record` (VARIANT) plus lineage columns.
+    loaded_at_field: _loaded_at
+    freshness:
+      warn_after: {count: 26, period: hour}
+      error_after: {count: 50, period: hour}
+    tables:
+      - name: gtfs_routes
+        identifier: GTFS_ROUTES
+        description: Adelaide Metro routes.txt, one file per timetable version.
+        freshness: null   # timetable only lands when it changes
+      - name: gtfs_stops
+        identifier: GTFS_STOPS
+        freshness: null
+      - name: gtfs_trips
+        identifier: GTFS_TRIPS
+        freshness: null
+      - name: gtfs_stop_times
+        identifier: GTFS_STOP_TIMES
+        freshness: null
+      - name: gtfs_calendar
+        identifier: GTFS_CALENDAR
+        freshness: null
+      - name: gtfs_calendar_dates
+        identifier: GTFS_CALENDAR_DATES
+        freshness: null
+      - name: gtfs_rt_trip_updates
+        identifier: GTFS_RT_TRIP_UPDATES
+        description: >
+          One row per stop_time_update per 15-minute GTFS-Realtime snapshot.
+        columns:
+          - name: _source_file
+            data_tests: [not_null]
+      - name: bom_observations
+        identifier: BOM_OBSERVATIONS
+        description: BOM half-hourly observations, rolling 72h window per file.

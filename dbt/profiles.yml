@@ -1,0 +1,43 @@
+# No secrets in this file: everything comes from environment variables.
+# Run dbt from the dbt/ folder, or pass --profiles-dir dbt.
+adelaide_transit:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'TRANSIT_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'TRANSIT') }}"
+      schema: "DBT_{{ env_var('DBT_USER', 'DEV') | upper }}"
+      threads: 4
+      query_tag: dbt_dev
+
+    ci:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'TRANSIT_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'TRANSIT') }}"
+      schema: "CI_PR_{{ env_var('PR_NUMBER', '0') }}"
+      threads: 4
+      query_tag: dbt_ci
+
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'TRANSIT_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'TRANSIT') }}"
+      schema: ANALYTICS
+      threads: 4
+      query_tag: dbt_prod

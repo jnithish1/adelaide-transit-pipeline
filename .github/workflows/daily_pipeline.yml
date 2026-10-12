@@ -1,0 +1,88 @@
+# The GitHub Actions alternative to the Airflow DAG: same steps, no server.
+name: Daily pipeline
+
+on:
+  schedule:
+    # 17:00 UTC = 03:30 Adelaide in summer (ACDT) / 02:30 in winter (ACST)
+    - cron: "0 17 * * *"
+  workflow_dispatch:   # "Run workflow" button for manual runs
+
+concurrency:
+  group: daily-pipeline
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # for AWS OIDC - no AWS keys stored in GitHub
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-2
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PRIVATE_KEY_PATH: ${{ github.workspace }}/snowflake_key.p8
+  DBT_TARGET: prod
+  PIPELINE_RUN_ID: gha-${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Record start time
+        run: echo "STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dbt.txt
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-southeast-2
+
+      - name: Write Snowflake key
+        run: |
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > snowflake_key.p8
+          chmod 600 snowflake_key.p8
+
+      - name: Extract -> S3
+        run: |
+          python -m ingestion.extract_gtfs_static
+          python -m ingestion.extract_bom
+
+      - name: Load S3 -> Snowflake RAW
+        run: python -m ingestion.load_snowflake
+
+      - name: dbt deps, seed, snapshot
+        working-directory: dbt
+        run: |
+          dbt deps --profiles-dir .
+          dbt seed --profiles-dir .
+          dbt snapshot --profiles-dir .
+          dbt source freshness --profiles-dir . || true
+
+      - name: dbt build (models + tests)
+        working-directory: dbt
+        run: dbt build --profiles-dir . --exclude resource_type:snapshot resource_type:seed
+
+      - name: Record run metrics
+        if: always()
+        run: |
+          python scripts/record_run.py \
+            --run-id "$PIPELINE_RUN_ID" \
+            --started-at "$STARTED_AT" \
+            --orchestrator github_actions
+
+      - name: Keep dbt artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-artifacts-${{ github.run_id }}
+          path: |
+            dbt/target/run_results.json
+            dbt/target/manifest.json
+          retention-days: 14

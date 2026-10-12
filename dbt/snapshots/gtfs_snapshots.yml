@@ -1,0 +1,22 @@
+# Type 2 slowly changing dimensions (Kimball). Each dbt run compares the
+# current timetable's routes and stops with the last snapshot and closes off
+# the old row when an attribute changes - e.g. a stop renamed or a route's
+# long name updated. dim_route and dim_stop are built on these.
+snapshots:
+  - name: snap_gtfs__routes
+    relation: ref('stg_gtfs__routes')
+    description: History of every route attribute change.
+    config:
+      unique_key: route_id
+      strategy: check
+      check_cols: [route_short_name, route_long_name, route_desc, route_type, route_color]
+      hard_deletes: invalidate   # a route removed from the feed gets its row closed
+
+  - name: snap_gtfs__stops
+    relation: ref('stg_gtfs__stops')
+    description: History of every stop attribute change.
+    config:
+      unique_key: stop_id
+      strategy: check
+      check_cols: [stop_name, stop_code, stop_lat, stop_lon, parent_station_id, wheelchair_boarding]
+      hard_deletes: invalidate
