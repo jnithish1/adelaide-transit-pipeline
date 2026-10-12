@@ -178,7 +178,7 @@ make dbt-docs            # lineage graph at localhost:8081
 | Secret | Value |
 |---|---|
 | `S3_BUCKET` | your bucket name |
-| `AWS_ROLE_ARN` | ARN of `github-transit-pipeline` |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | key of the write-only IAM user (`transit-pipeline-local`) |
 | `SNOWFLAKE_ACCOUNT` | account identifier |
 | `SNOWFLAKE_USER` | `SVC_TRANSIT_PIPELINE` |
 | `SNOWFLAKE_PRIVATE_KEY` | full contents of `snowflake_key.p8` |

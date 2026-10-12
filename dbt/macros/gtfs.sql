@@ -45,12 +45,13 @@
 
 {# GTFS route_type -> readable mode #}
 {% macro route_mode(route_type) -%}
-    case {{ route_type }}
-        when 0 then 'Tram'
-        when 1 then 'Metro'
-        when 2 then 'Train'
-        when 3 then 'Bus'
-        when 4 then 'Ferry'
+    case
+        when {{ route_type }} in (0, 5) or {{ route_type }} between 900 and 999 then 'Tram'
+        when {{ route_type }} = 1 or {{ route_type }} between 400 and 499 then 'Metro'
+        when {{ route_type }} = 2 or {{ route_type }} between 100 and 199 then 'Train'
+        when {{ route_type }} in (3, 11) or {{ route_type }} between 200 and 299
+             or {{ route_type }} between 700 and 799 then 'Bus'
+        when {{ route_type }} = 4 or {{ route_type }} between 1000 and 1299 then 'Ferry'
         else 'Other'
     end
 {%- endmacro %}

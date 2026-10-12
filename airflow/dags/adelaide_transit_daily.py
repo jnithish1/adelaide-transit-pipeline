@@ -4,7 +4,7 @@ Runs at 03:00 Adelaide time, after the previous service day has finished
 (the last trams and trains run past midnight).
 
     extract_gtfs_static ─┐
-                         ├─> load_snowflake ─> dbt_deps ─> dbt_seed ─> dbt_snapshot ─> dbt_build ─> record_run
+                         ├─> load_snowflake ─> dbt_deps ─> dbt_build ─> record_run
     extract_weather ─────┘
 
 dbt_build runs models and their tests together, in DAG order, so a failing
@@ -78,8 +78,6 @@ def adelaide_transit_daily():
         bash_command=f"rm -f {DBT_DIR}/target/run_results.json && {DBT} deps",
         env=common_env,
     )
-    dbt_seed = BashOperator(task_id="dbt_seed", bash_command=f"{DBT} seed", env=common_env)
-    dbt_snapshot = BashOperator(task_id="dbt_snapshot", bash_command=f"{DBT} snapshot", env=common_env)
     dbt_source_freshness = BashOperator(
         task_id="dbt_source_freshness",
         bash_command=f"{DBT} source freshness || true",  # report, don't block
@@ -87,7 +85,7 @@ def adelaide_transit_daily():
     )
     dbt_build = BashOperator(
         task_id="dbt_build",
-        bash_command=f"{DBT} build --exclude resource_type:snapshot resource_type:seed",
+        bash_command=f"{DBT} build",  # seeds, models, snapshots, tests in DAG order
         env=common_env,
         execution_timeout=timedelta(minutes=45),
     )
@@ -106,7 +104,7 @@ def adelaide_transit_daily():
     started = run_started()
     loaded = load_snowflake(run_id="{{ run_id }}")
     started >> [extract_gtfs_static(), extract_weather()] >> loaded
-    loaded >> dbt_deps >> dbt_seed >> dbt_snapshot >> dbt_source_freshness >> dbt_build >> record_run
+    loaded >> dbt_deps >> dbt_source_freshness >> dbt_build >> record_run
 
 
 adelaide_transit_daily()

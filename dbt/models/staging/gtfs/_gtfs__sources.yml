@@ -4,6 +4,8 @@ sources:
   - name: raw
     database: "{{ env_var('SNOWFLAKE_DATABASE', 'TRANSIT') }}"
     schema: RAW
+    quoting:
+      database: true
     description: >
       Landed files from S3, loaded by ingestion/load_snowflake.py. Every table has
       the same shape: `record` (VARIANT) plus lineage columns.

@@ -20,6 +20,8 @@ import sys
 import uuid
 from datetime import UTC, datetime
 
+import ingestion.config  # noqa: F401  (loads .env into the environment)
+
 log = logging.getLogger("load_snowflake")
 
 # (target table, stage sub-path). One RAW table per landed dataset.

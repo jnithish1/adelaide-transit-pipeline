@@ -1,3 +1,7 @@
+-- NOTE: on this project's account the storage-integration handshake kept
+-- returning 'not authorized to perform sts:AssumeRole', so the stage was
+-- created with a read-only IAM user's key instead (see 'Fallback' at the end).
+--
 -- =============================================================================
 -- 02_s3_integration.sql  -  connect Snowflake to your S3 bucket securely.
 --
@@ -42,3 +46,10 @@ LIST @LAKE_STAGE;
 SELECT $1, METADATA$FILENAME
 FROM @LAKE_STAGE/weather/hourly/ (FILE_FORMAT => 'NDJSON_GZ')
 LIMIT 5;
+
+-- Fallback used here: stage with a read-only key (IAM user snowflake-stage-reader,
+-- policy = infra/aws/snowflake-read-policy.json). Never commit the key.
+-- CREATE OR REPLACE STAGE TRANSIT.RAW.LAKE_STAGE
+--   URL = 's3://<YOUR_BUCKET>/raw/'
+--   CREDENTIALS = (AWS_KEY_ID = '...' AWS_SECRET_KEY = '...')
+--   FILE_FORMAT = TRANSIT.RAW.NDJSON_GZ;

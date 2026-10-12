@@ -60,3 +60,10 @@ data_tests:
   adelaide_transit:
     +store_failures: true   # failing rows land in a table you can query
     +schema: test_failures
+
+# The database name TRANSIT is quoted everywhere: unquoted, some SHOW
+# commands fail to parse on this Snowflake account.
+quoting:
+  database: true
+
+query-comment: null

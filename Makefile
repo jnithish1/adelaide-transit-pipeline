@@ -30,7 +30,7 @@ load: ## COPY new S3 files into Snowflake RAW
 	python -m ingestion.load_snowflake
 
 dbt-dev: ## Full dbt build into your dev schema
-	$(DBT) deps $(PROFILES) && $(DBT) seed $(PROFILES) && $(DBT) snapshot $(PROFILES) && $(DBT) build $(PROFILES) --exclude resource_type:snapshot resource_type:seed
+	$(DBT) deps $(PROFILES) && $(DBT) build $(PROFILES)
 
 dbt-docs: ## Generate and serve dbt docs (lineage graph at localhost:8081)
 	$(DBT) docs generate $(PROFILES) && $(DBT) docs serve $(PROFILES) --port 8081
